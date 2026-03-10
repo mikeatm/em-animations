@@ -21,16 +21,6 @@ Interactive browser-based animations for a 1st-year Engineering **Electricity & 
 
 ---
 
-## How to host on GitHub Pages
-
-1. Create a new repo (e.g. `em-animations`).
-2. Upload `index.html` to the repo root.
-3. Go to **Settings → Pages → Source → Deploy from branch → main / (root)**.
-4. Wait ~60 s, then visit `https://<your-username>.github.io/em-animations/`.
-
-That's it — no build step, no dependencies, pure HTML/CSS/JS.
-
----
 
 ## Related repos
 
