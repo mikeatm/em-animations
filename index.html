@@ -307,7 +307,7 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
   </div>
   <div class="info-box">
     <strong>Gauss's Law:</strong><br>
-    <span class="eq">∮ E⃗ · dA⃗ = Q_enc / ε₀</span><br>
+    <span class="eq">&#x222E; E &middot; dA = Q<sub>enc</sub> / &epsilon;&#x2080;</span><br>
     The electric field E ∝ 1/r², but the area A ∝ r². These cancel exactly, so the total flux is independent of sphere size.<br><br>
     <strong>Notice:</strong> The flux (shown in green) stays constant regardless of radius. The field magnitude (blue) changes, but flux doesn't.
   </div>
@@ -557,9 +557,15 @@ function show(id) {
 }
 
 function resize(canvas) {
-  const w = canvas.parentElement.clientWidth;
-  canvas.width = w;
+  const w = canvas.parentElement ? canvas.parentElement.clientWidth : 0;
+  if (!w) return null;   // parent is hidden — skip draw
+  if (canvas.width !== w) canvas.width = w;
   return canvas.getContext('2d');
+}
+
+function safeCtx(canvas) {
+  // Returns ctx or null; callers must guard: const ctx = safeCtx(c); if(!ctx) return;
+  return resize(canvas);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -570,6 +576,7 @@ let anim1 = null;
 function draw1() {
   const canvas = document.getElementById('c1');
   const ctx = resize(canvas);
+  if (!ctx) return;
   const W = canvas.width, H = canvas.height;
   const theta = +document.getElementById('angle1').value * Math.PI / 180;
   const E = +document.getElementById('efield1').value;
@@ -648,19 +655,26 @@ function draw1() {
   ctx.font = '12px Space Mono, monospace';
   ctx.fillText('n̂', normalLen + 4, 4);
 
-  // Angle arc
+  // Angle arc — between normal (pointing right at angle 0) and E-field direction
+  // In the rotated frame, E-field arrives from angle +theta (below horizontal in world = above in rotated)
+  // Arc from 0 (normal direction) to theta (field direction, in rotated frame field is at +theta from normal)
   const arcR = 30;
   ctx.strokeStyle = '#f472b6';
   ctx.lineWidth = 1.5;
   if (theta > 0.01) {
     ctx.beginPath();
-    ctx.arc(0, 0, arcR, -theta, 0);
+    ctx.arc(0, 0, arcR, 0, theta);
     ctx.stroke();
+    // Draw short tick to indicate field direction in rotated frame
+    ctx.strokeStyle = 'rgba(251,191,36,0.5)'; ctx.lineWidth = 1;
+    ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo((arcR+20)*Math.cos(theta),(arcR+20)*Math.sin(theta));
+    ctx.stroke(); ctx.setLineDash([]);
     ctx.fillStyle = '#f472b6';
     ctx.font = '12px DM Sans';
     ctx.textAlign = 'center';
-    const midA = -theta / 2;
-    ctx.fillText('θ', (arcR + 12) * Math.cos(midA), (arcR + 12) * Math.sin(midA));
+    const midA = theta / 2;
+    ctx.fillText('θ', (arcR + 14) * Math.cos(midA), (arcR + 14) * Math.sin(midA));
     ctx.textAlign = 'left';
   }
 
@@ -724,6 +738,7 @@ function animateAngle() {
 function draw2() {
   const canvas = document.getElementById('c2');
   const ctx = resize(canvas);
+  if (!ctx) return;
   const W = canvas.width, H = canvas.height;
   const rSlider = +document.getElementById('radius2').value;
   const qnC = +document.getElementById('charge2').value;
@@ -791,7 +806,7 @@ function draw2() {
   const px = W * 0.73, py = H * 0.08;
   const pw = Math.min(200, W - px - 20);
   ctx.fillStyle = 'rgba(10,14,26,0.92)';
-  ctx.beginPath(); ctx.roundRect(px, py, pw, 200, 10); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(px, py, pw, 220, 10); ctx.fill();
   ctx.strokeStyle = '#1e2d45'; ctx.lineWidth = 1; ctx.stroke();
 
   const row = (label, val, color, y) => {
@@ -808,13 +823,15 @@ function draw2() {
 
   // Flux — constant regardless of r
   ctx.fillStyle = '#64748b'; ctx.font = '10px Space Mono';
-  ctx.fillText('Total Flux Φ', px+12, py+178);
+  ctx.fillText('Total Flux (Gauss)', px+12, py+178);
+  ctx.fillStyle = '#34d399'; ctx.font = 'bold 11px Space Mono';
+  ctx.fillText(`\u222E E\u00B7dA = q/\u03B5\u2080`, px+12, py+192);
   ctx.fillStyle = '#34d399'; ctx.font = 'bold 12px Space Mono';
-  ctx.fillText(`${(flux).toFixed(0)} N·m²/C`, px+12, py+195);
+  ctx.fillText(`${(flux).toFixed(0)} N\u00B7m\u00B2/C`, px+12, py+208);
 
   // Constant flux indicator
   ctx.fillStyle = 'rgba(52,211,153,0.12)';
-  ctx.beginPath(); ctx.roundRect(px+8, py+170, pw-16, 28, 4); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(px+8, py+185, pw-16, 28, 4); ctx.fill();
   ctx.strokeStyle = '#34d399'; ctx.lineWidth = 1; ctx.stroke();
 }
 
@@ -835,6 +852,7 @@ function toggleSurface3() { showSurface3 = !showSurface3; draw3(); }
 function draw3() {
   const canvas = document.getElementById('c3');
   const ctx = resize(canvas);
+  if (!ctx) return;
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#0d1526'; ctx.fillRect(0, 0, W, H);
@@ -952,6 +970,7 @@ function toggleCharge4() {
 function draw4() {
   const canvas = document.getElementById('c4');
   const ctx = resize(canvas);
+  if (!ctx) return;
   const W = canvas.width, H = canvas.height;
   const extE = +document.getElementById('extfield4').value;
 
@@ -963,37 +982,61 @@ function draw4() {
   const cx = W * 0.5, cy = H * 0.5;
   const cw = Math.min(W * 0.22, 110), ch = Math.min(H * 0.5, 140);
 
-  // Background field lines (distorted around conductor)
-  for (let y = H * 0.1; y <= H * 0.9; y += H * 0.09) {
+  // Background field lines — smooth analytic deflection (no kinks)
+  // Approach: integrate the field line numerically. At each step, the field direction is
+  // (1, 0) [uniform E] plus a perturbation from two image charges ±q placed at the
+  // conductor's left/right faces, which approximates charge redistribution on a slab.
+  // This gives smooth, physically-correct bending that converges back to horizontal far away.
+  const imgStrength = extE * cw * 0.6;  // scales with field and conductor width
+  // Image charges at conductor faces (x = cx±cw), on the horizontal centre line
+  const imgQ = [{x: cx - cw, q: -imgStrength}, {x: cx + cw, q: +imgStrength}];
+
+  for (let startY = H * 0.1; startY <= H * 0.9; startY += H * 0.09) {
+    // Integrate line from left edge to right edge
+    const pts = [];
+    let lx = 30, ly = startY;
+    const step = 2;
+    while (lx <= W - 30) {
+      // Field: uniform (1,0) + image charges
+      let fy = 0;
+      for (const img of imgQ) {
+        const dx = lx - img.x, dy = ly - img.y;
+        const r2 = dx*dx + dy*dy + 400; // softened
+        fy += img.q * dy / r2;
+      }
+      // Clamp deflection per step
+      ly += Math.max(-3, Math.min(3, fy));
+      pts.push({x: lx, y: ly, inCond: Math.abs(lx - cx) < cw && Math.abs(ly - cy) < ch});
+      lx += step;
+    }
+
     ctx.strokeStyle = `rgba(251,191,36,${0.25 + extE * 0.07})`;
     ctx.lineWidth = 1.2;
-    ctx.beginPath();
 
-    // Draw line that bends around the conductor
-    let py = y;
-    for (let x = 30; x <= W - 30; x += 3) {
-      const dx = x - cx, dy = py - cy;
-      const inBlock = Math.abs(dx) < cw + 5 && Math.abs(dy) < ch + 5;
-      if (inBlock) {
-        // Skip inside conductor
-        ctx.stroke(); ctx.beginPath();
-        ctx.moveTo(x + cw * 2 + 10, py);
-      } else {
-        // Slight bend near conductor edges
-        const dist = Math.sqrt(dx*dx + dy*dy);
-        const deflect = (dist < (cw + ch)) ? 
-          -dy * cw * ch / (dist * dist + 1) * 0.015 * extE : 0;
-        py += deflect;
-        ctx.lineTo(x, py);
-      }
+    // Left segment
+    ctx.beginPath(); let started = false;
+    for (const p of pts) {
+      if (p.inCond || p.x > cx - cw + 4) break;
+      started ? ctx.lineTo(p.x, p.y) : (ctx.moveTo(p.x, p.y), started = true);
     }
     ctx.stroke();
 
-    // Arrow
+    // Right segment
+    ctx.beginPath(); started = false;
+    for (const p of pts) {
+      if (p.x < cx + cw - 4) continue;
+      if (p.inCond) { started = false; continue; }
+      started ? ctx.lineTo(p.x, p.y) : (ctx.moveTo(p.x, p.y), started = true);
+    }
+    ctx.stroke();
+
+    // Arrowhead at right end
     ctx.fillStyle = `rgba(251,191,36,${0.5 + extE * 0.06})`;
-    ctx.beginPath();
-    const ax = W - 45;
-    ctx.moveTo(ax, y); ctx.lineTo(ax-10, y-5); ctx.lineTo(ax-10, y+5); ctx.fill();
+    const rpts = pts.filter(p => !p.inCond && p.x > W - 52);
+    if (rpts.length >= 2) {
+      const lp = rpts[rpts.length - 1];
+      ctx.beginPath(); ctx.moveTo(lp.x, lp.y); ctx.lineTo(lp.x-10, lp.y-5); ctx.lineTo(lp.x-10, lp.y+5); ctx.fill();
+    }
   }
 
   // Conductor body
@@ -1069,6 +1112,7 @@ function toggleFieldLines5() { showField5 = !showField5; draw5(); }
 function draw5() {
   const canvas = document.getElementById('c5');
   const ctx = resize(canvas);
+  if (!ctx) return;
   const W = canvas.width, H = canvas.height;
   const qnC = +document.getElementById('q5').value;
   const ke = 8.99e9, q = qnC * 1e-9;
@@ -1157,6 +1201,7 @@ function draw5() {
 function draw6() {
   const canvas = document.getElementById('c6');
   const ctx = resize(canvas);
+  if (!ctx) return;
   const W = canvas.width, H = canvas.height;
   const d = +document.getElementById('sep6').value;
   const A = +document.getElementById('area6').value;
@@ -1282,6 +1327,7 @@ function setCircuit7(type) {
 function draw7() {
   const canvas = document.getElementById('c7');
   const ctx = resize(canvas);
+  if (!ctx) return;
   const W = canvas.width, H = canvas.height;
   const emf = +document.getElementById('emf7').value;
   const R1 = +document.getElementById('r1_7').value;
@@ -1369,61 +1415,68 @@ function draw7() {
 
   if (circuit7 === 'series') {
     const normI = Math.min(I / 5, 1.0);
-    drawWire(x0, y0, x1 - 60, y0, normI);
-    drawWire(x1, y0, x1, y1, normI);
-    drawWire(x0, y1, x1, y1, normI);
-    drawWire(x0, y0, x0, y1, normI);
+    // Top rail with two resistors — draw in three segments around resistors
+    const r1x = mx - 50, r2x = mx + 50;
+    drawWire(x0, y0, r1x - 35, y0, normI);       // top left of R1
+    drawWire(r1x + 35, y0, r2x - 35, y0, normI); // between R1 and R2
+    drawWire(r2x + 35, y0, x1, y0, normI);       // right of R2 to right rail
+    drawWire(x1, y0, x1, y1, normI);             // right rail
+    drawWire(x0, y1, x1, y1, normI);             // bottom rail
+    drawWire(x0, y0, x0, y1, 0.3);              // left rail (battery)
 
     drawBattery(x0, my);
-    drawResistor(mx - 40, y0, true, 'R₁', R1, normI);
-    drawResistor(mx + 45, y0, true, 'R₂', R2, normI);
+    drawResistor(r1x, y0, true, 'R\u2081', R1, normI);
+    drawResistor(r2x, y0, true, 'R\u2082', R2, normI);
 
     // Labels
+    ctx.fillStyle = '#38bdf8'; ctx.font = '13px DM Sans'; ctx.textAlign = 'center';
+    ctx.fillText('\u2192', mx, y0 - 10);
+    ctx.textAlign = 'left';
     ctx.fillStyle = '#34d399'; ctx.font = 'bold 11px Space Mono';
-    ctx.fillText(`I = ${I.toFixed(2)} A (same everywhere)`, mx - 60, y1 + 24);
+    ctx.fillText(`I = ${I.toFixed(2)} A (same everywhere)`, mx - 70, y1 + 24);
     ctx.fillStyle = '#94a3b8'; ctx.font = '10px Space Mono';
-    ctx.fillText(`V₁=${V1.toFixed(1)}V  V₂=${V2.toFixed(1)}V  R_eq=${Req.toFixed(1)}Ω`, mx - 60, y1 + 40);
+    ctx.fillText(`V\u2081=${V1.toFixed(1)}V  V\u2082=${V2.toFixed(1)}V  R_eq=${Req.toFixed(1)}\u03A9`, mx - 70, y1 + 40);
 
   } else {
-    // Parallel
-    const normI = Math.min(I / 5, 1.0);
-    const midX = mx + 80;
-    drawWire(x0, y0, midX, y0, normI);
-    drawWire(x0, y1, midX, y1, normI);
-    drawWire(x0, y0, x0, y1, 0.3);
+    const normI  = Math.min(I  / 5, 1.0);
+    const normI1 = Math.min(I1 / 5, 1.0);
+    const normI2 = Math.min(I2 / 5, 1.0);
+
+    const r1x = mx - bW * 0.15;
+    const r2x = mx + bW * 0.15;
+    const topY = my - bH * 0.38;
+    const botY = my + bH * 0.38;
+
+    // Top horizontal wire: battery-top → r1x → r2x (one continuous wire, no outer sides)
+    drawWire(x0, topY, r2x, topY, normI);
+    // Bottom horizontal wire: battery-bottom → r1x → r2x
+    drawWire(x0, botY, r2x, botY, normI);
+
+    // Battery left vertical
+    drawWire(x0, topY, x0, botY, 0.25);
+
+    // R1 vertical branch
+    drawWire(r1x, topY, r1x, my - 32, normI1);
+    drawWire(r1x, my + 32, r1x, botY,  normI1);
+    // R2 vertical branch
+    drawWire(r2x, topY, r2x, my - 32, normI2);
+    drawWire(r2x, my + 32, r2x, botY,  normI2);
 
     drawBattery(x0, my);
+    drawResistor(r1x, my, false, 'R\u2081', R1, normI1);
+    drawResistor(r2x, my, false, 'R\u2082', R2, normI2);
 
-    // Two parallel branches
-    const branchX = midX + 60;
-    const branch1Y = my - bH * 0.22;
-    const branch2Y = my + bH * 0.22;
-
-    const normI1 = Math.min(I1 / 5, 1.0), normI2 = Math.min(I2 / 5, 1.0);
-    drawWire(midX, y0, midX, branch1Y, normI);
-    drawWire(midX, y1, midX, branch2Y, normI);
-
-    drawWire(midX, branch1Y, midX + 50, branch1Y, normI1);
-    drawWire(midX + 110, branch1Y, branchX + 60, branch1Y, normI1);
-    drawWire(midX, branch2Y, midX + 50, branch2Y, normI2);
-    drawWire(midX + 110, branch2Y, branchX + 60, branch2Y, normI2);
-
-    drawWire(branchX + 60, branch1Y, branchX + 60, y0, normI);
-    drawWire(branchX + 60, branch2Y, branchX + 60, y1, normI);
-
-    drawResistor(midX + 80, branch1Y, true, 'R₁', R1, normI1);
-    drawResistor(midX + 80, branch2Y, true, 'R₂', R2, normI2);
+    // Junction dots
+    ctx.fillStyle = '#38bdf8';
+    for (const [jx, jy] of [[r1x,topY],[r1x,botY],[r2x,topY],[r2x,botY]]) {
+      ctx.beginPath(); ctx.arc(jx, jy, 4, 0, Math.PI*2); ctx.fill();
+    }
 
     ctx.fillStyle = '#34d399'; ctx.font = 'bold 11px Space Mono';
-    ctx.fillText(`I_total = ${I.toFixed(2)} A`, mx - 30, y1 + 24);
+    ctx.fillText(`I_total = ${I.toFixed(2)} A`, mx - 20, botY + 30);
     ctx.fillStyle = '#94a3b8'; ctx.font = '10px Space Mono';
-    ctx.fillText(`I₁=${I1.toFixed(2)}A  I₂=${I2.toFixed(2)}A  R_eq=${Req.toFixed(1)}Ω`, mx - 30, y1 + 40);
+    ctx.fillText(`I\u2081=${I1.toFixed(2)}A  I\u2082=${I2.toFixed(2)}A  R_eq=${Req.toFixed(1)}\u03A9`, mx - 20, botY + 46);
   }
-
-  // Current arrows on top wire
-  ctx.fillStyle = '#38bdf8'; ctx.font = '14px DM Sans'; ctx.textAlign = 'center';
-  ctx.fillText('→', mx, y0 - 12);
-  ctx.textAlign = 'left';
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1434,6 +1487,7 @@ let anim8 = null;
 function draw8() {
   const canvas = document.getElementById('c8');
   const ctx = resize(canvas);
+  if (!ctx) return;
   const W = canvas.width, H = canvas.height;
   const theta = +document.getElementById('theta8').value * Math.PI / 180;
   const B = +document.getElementById('b8').value;
@@ -1543,6 +1597,68 @@ function animateTheta8() {
 window.addEventListener('load', () => {
   draw1(); draw2(); draw3(); draw4(); draw5(); draw6(); draw7(); draw8();
 });
+
+// Scene 5 hover probe — attached directly, not inside load, so it always works
+// even when canvas was hidden at load time.
+(function() {
+  const c5 = document.getElementById('c5');
+
+  function probeAt(e) {
+    // Ensure canvas has been sized (tab may have been hidden at load)
+    if (!c5.width) { draw5(); }
+    const W = c5.width, H = c5.height;
+    if (!W || !H) return;
+
+    const rect = c5.getBoundingClientRect();
+    // Scale from CSS pixels to canvas pixels
+    const scaleX = W / rect.width;
+    const scaleY = H / rect.height;
+    const mx = (e.clientX - rect.left) * scaleX;
+    const my = (e.clientY - rect.top)  * scaleY;
+
+    const cx = W / 2, cy = H / 2;
+    const scale = W / 6;
+    const ke = 8.99e9;
+    const qnC = +document.getElementById('q5').value;
+    const q = qnC * 1e-9;
+    const dx = (mx - cx) / scale, dy = (my - cy) / scale;
+    const r = Math.sqrt(dx*dx + dy*dy);
+    if (r < 0.05) return;
+    const V = ke * q / r;
+    const Emag = ke * Math.abs(q) / (r * r);
+
+    draw5();   // redraw base scene
+    const ctx = c5.getContext('2d');
+
+    // Crosshair
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1;
+    ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(mx-14, my); ctx.lineTo(mx+14, my); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(mx, my-14); ctx.lineTo(mx, my+14); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Probe dot
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(mx, my, 3, 0, Math.PI*2); ctx.fill();
+
+    // Tooltip — clamp to canvas bounds
+    const tw = 168, th = 60;
+    const tx = Math.min(mx + 14, W - tw - 6);
+    const ty = Math.max(6, Math.min(my - 14, H - th - 6));
+    ctx.fillStyle = 'rgba(10,14,26,0.93)';
+    ctx.beginPath(); ctx.roundRect(tx, ty, tw, th, 6); ctx.fill();
+    ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = '#38bdf8'; ctx.font = '10px Space Mono';
+    ctx.fillText(`r = ${r.toFixed(3)} m`, tx+8, ty+16);
+    ctx.fillStyle = (V >= 0 ? '#f87171' : '#60a5fa');
+    ctx.fillText(`V = ${(V/1000).toFixed(2)} kV`, tx+8, ty+33);
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillText(`E = ${(Emag/1000).toFixed(2)} kN/C`, tx+8, ty+50);
+  }
+
+  c5.addEventListener('mousemove', probeAt);
+  c5.addEventListener('mouseleave', () => draw5());
+})();
 window.addEventListener('resize', () => {
   const active = document.querySelector('.scene.active');
   if (!active) return;
