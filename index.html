@@ -242,6 +242,10 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
   <button class="tab-btn" onclick="show('capacitor')">6. Capacitor Charging</button>
   <button class="tab-btn" onclick="show('series-parallel')">7. Series vs Parallel</button>
   <button class="tab-btn" onclick="show('magnetic-flux')">8. Magnetic Flux</button>
+  <button class="tab-btn" onclick="show('coulombs-law')">9. Coulomb's Law</button>
+  <button class="tab-btn" onclick="show('superposition')">10. Superposition</button>
+  <button class="tab-btn" onclick="show('dipole-field')">11. Dipole Field</button>
+  <button class="tab-btn" onclick="show('charge-motion')">12. Charge in E-field</button>
 </nav>
 
 <!-- ═══════════════════════════════════════════════════════
@@ -551,7 +555,9 @@ function show(id) {
   const drawFns = {
     'flux-angle': draw1, 'gauss-sphere': draw2, 'field-lines': draw3,
     'conductor': draw4, 'potential': draw5, 'capacitor': draw6,
-    'series-parallel': draw7, 'magnetic-flux': draw8
+    'series-parallel': draw7, 'magnetic-flux': draw8,
+    'coulombs-law': draw9, 'superposition': draw10,
+    'dipole-field': draw11, 'charge-motion': draw12
   };
   if (drawFns[id]) drawFns[id]();
 }
@@ -1571,6 +1577,7 @@ function animateTheta8() {
 // ═══════════════════════════════════════════════════════
 window.addEventListener('load', () => {
   draw1(); draw2(); draw3(); draw4(); draw5(); draw6(); draw7(); draw8();
+  draw9(); draw10(); draw11(); draw12();
 });
 
 // Scene 5 hover probe — attached directly, not inside load, so it always works
@@ -1638,9 +1645,604 @@ window.addEventListener('resize', () => {
   const active = document.querySelector('.scene.active');
   if (!active) return;
   const fns = {'flux-angle':draw1,'gauss-sphere':draw2,'field-lines':draw3,
-    'conductor':draw4,'potential':draw5,'capacitor':draw6,'series-parallel':draw7,'magnetic-flux':draw8};
+    'conductor':draw4,'potential':draw5,'capacitor':draw6,'series-parallel':draw7,'magnetic-flux':draw8,
+    'coulombs-law':draw9,'superposition':draw10,'dipole-field':draw11,'charge-motion':draw12};
   if (fns[active.id]) fns[active.id]();
 });
+
+// ═══════════════════════════════════════════════════════
+// SCENE 9: COULOMB'S LAW
+// ═══════════════════════════════════════════════════════
+function draw9() {
+  const canvas = document.getElementById('c9');
+  const ctx = resize(canvas);
+  if (!ctx) return;
+  const W = canvas.width, H = canvas.height;
+  const q1raw = +document.getElementById('q1_9').value;
+  const q2raw = +document.getElementById('q2_9').value;
+  const rCm   = +document.getElementById('r9').value;
+
+  document.getElementById('q1_9val').textContent = (q1raw >= 0 ? '+' : '') + q1raw;
+  document.getElementById('q2_9val').textContent = (q2raw >= 0 ? '+' : '') + q2raw;
+  document.getElementById('r9val').textContent   = rCm + ' cm';
+
+  const ke = 8.99e9;
+  const q1 = q1raw * 1e-19, q2 = q2raw * 1e-19;
+  const r  = rCm * 0.01;
+  const F  = ke * Math.abs(q1 * q2) / (r * r);
+  const attract = (q1 * q2) < 0;
+
+  ctx.fillStyle = '#0d1526'; ctx.fillRect(0, 0, W, H);
+
+  const cx = W / 2, cy = H * 0.42;
+  const spacing = Math.min(rCm * 22, W * 0.38);
+  const x1 = cx - spacing / 2, x2 = cx + spacing / 2;
+
+  // Separation line
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(x1, cy); ctx.lineTo(x2, cy); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#475569'; ctx.font = '10px Space Mono'; ctx.textAlign = 'center';
+  ctx.fillText(`r = ${rCm} cm`, cx, cy - 10);
+
+  // Force arrows — scale with F, clamp for display
+  const arrowScale = Math.min(F * 8e22, 80);
+  const drawArrow = (x, dir, color) => {
+    const tip = x + dir * arrowScale;
+    ctx.strokeStyle = color; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(x, cy); ctx.lineTo(tip, cy); ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(tip, cy); ctx.lineTo(tip - dir*10, cy-5); ctx.lineTo(tip - dir*10, cy+5);
+    ctx.fill();
+  };
+
+  const fColor = attract ? '#34d399' : '#f87171';
+  if (Math.abs(q1) > 0 && Math.abs(q2) > 0) {
+    const dir1 = attract ? 1 : -1;   // force on q1 toward q2 if attract
+    const dir2 = attract ? -1 : 1;
+    drawArrow(x1, dir1, fColor);
+    drawArrow(x2, dir2, fColor);
+  }
+
+  // Draw charges
+  const drawCharge = (x, q, label) => {
+    const pos = q > 0;
+    const g = ctx.createRadialGradient(x, cy, 2, x, cy, 18);
+    g.addColorStop(0, '#fff');
+    g.addColorStop(0.4, pos ? '#f87171' : '#60a5fa');
+    g.addColorStop(1,   pos ? '#7f1d1d' : '#1e3a5f');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, cy, 18, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 13px DM Sans'; ctx.textAlign = 'center';
+    ctx.fillText(q === 0 ? '0' : (pos ? '+' : '−'), x, cy + 5);
+    ctx.fillStyle = '#94a3b8'; ctx.font = '10px Space Mono';
+    ctx.fillText(label, x, cy + 34);
+  };
+  drawCharge(x1, q1raw, `q₁=${q1raw > 0 ? '+' : ''}${q1raw}×10⁻¹⁹C`);
+  drawCharge(x2, q2raw, `q₂=${q2raw > 0 ? '+' : ''}${q2raw}×10⁻¹⁹C`);
+
+  // Info panel
+  const px = W * 0.03, py = H * 0.68;
+  ctx.fillStyle = 'rgba(17,24,39,0.9)';
+  ctx.beginPath(); ctx.roundRect(px, py, W * 0.94, 82, 8); ctx.fill();
+  ctx.strokeStyle = fColor; ctx.lineWidth = 1; ctx.stroke();
+
+  ctx.fillStyle = '#64748b'; ctx.font = '10px Space Mono'; ctx.textAlign = 'left';
+  ctx.fillText('F = k|q₁||q₂|/r²', px+12, py+18);
+  ctx.fillStyle = fColor; ctx.font = 'bold 13px Space Mono';
+  ctx.fillText(`F = ${F.toExponential(3)} N`, px+12, py+38);
+  ctx.fillStyle = '#94a3b8'; ctx.font = '10px Space Mono';
+  ctx.fillText(attract ? '← Attractive (unlike charges)' : '← Repulsive (like charges)', px+12, py+56);
+  ctx.fillStyle = '#475569';
+  ctx.fillText('Newton 3rd law: |F on q₁| = |F on q₂| always', px+12, py+72);
+}
+
+// ═══════════════════════════════════════════════════════
+// SCENE 10: SUPERPOSITION
+// ═══════════════════════════════════════════════════════
+let q3sign10 = 1;
+function setQ3Sign(s) {
+  q3sign10 = s;
+  document.getElementById('btn-pos10').classList.toggle('active', s > 0);
+  document.getElementById('btn-neg10').classList.toggle('active', s < 0);
+  draw10();
+}
+
+function draw10() {
+  const canvas = document.getElementById('c10');
+  const ctx = resize(canvas);
+  if (!ctx) return;
+  const W = canvas.width, H = canvas.height;
+  const thetaDeg = +document.getElementById('theta10').value;
+  const dist     = +document.getElementById('dist10').value;
+  document.getElementById('theta10val').textContent = thetaDeg + '°';
+  document.getElementById('dist10val').textContent  = dist + ' px';
+
+  ctx.fillStyle = '#0d1526'; ctx.fillRect(0, 0, W, H);
+
+  const ke = 8.99e9;
+  // Fixed charges: q1 at left, q2 at right (from Example 6 in notes)
+  const sep = Math.min(W * 0.28, 140);
+  const q1x = W*0.5 - sep/2, q1y = H*0.45;
+  const q2x = W*0.5 + sep/2, q2y = H*0.45;
+  // q3 orbits around q1
+  const theta = thetaDeg * Math.PI / 180;
+  const q3x = q1x + dist * Math.cos(theta);
+  const q3y = q1y + dist * Math.sin(theta);
+
+  // Charge values (scaled for display)
+  const Q1 = 1.6e-19, Q2 = 3.2e-19, Q3 = q3sign10 * 3.2e-19;
+
+  // Forces on q1
+  const r12 = Math.sqrt((q1x-q2x)**2 + (q1y-q2y)**2);
+  const r13 = Math.sqrt((q1x-q3x)**2 + (q1y-q3y)**2);
+  const scale = 1e13; // visual scale for arrows
+
+  const F12_mag = ke * Q1 * Q2 / (r12*r12) * scale; // repulsive: away from q2
+  const F13_mag = ke * Math.abs(Q1 * Q3) / (r13*r13) * scale;
+
+  // Direction: F12 on q1 is away from q2 (since both positive)
+  const d12x = (q1x - q2x) / r12, d12y = (q1y - q2y) / r12;
+  // F13 direction depends on sign
+  const d13x_raw = (q1x - q3x) / r13, d13y_raw = (q1y - q3y) / r13;
+  const d13x = Q3 < 0 ? -d13x_raw : d13x_raw;
+  const d13y = Q3 < 0 ? -d13y_raw : d13y_raw;
+
+  const F12x = d12x * F12_mag, F12y = d12y * F12_mag;
+  const F13x = d13x * F13_mag, F13y = d13y * F13_mag;
+  const Fnetx = F12x + F13x, Fnety = F12y + F13y;
+
+  const clamp = (v, mx) => Math.max(-mx, Math.min(mx, v));
+  const maxArrow = 90;
+
+  const drawVec = (ox, oy, dx, dy, color, label) => {
+    const cdx = clamp(dx, maxArrow), cdy = clamp(dy, maxArrow);
+    const len = Math.sqrt(cdx*cdx + cdy*cdy);
+    if (len < 2) return;
+    ctx.strokeStyle = color; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ox+cdx, oy+cdy); ctx.stroke();
+    ctx.fillStyle = color;
+    const nx = cdx/len, ny = cdy/len;
+    ctx.beginPath();
+    ctx.moveTo(ox+cdx, oy+cdy);
+    ctx.lineTo(ox+cdx - nx*10 + ny*5, oy+cdy - ny*10 - nx*5);
+    ctx.lineTo(ox+cdx - nx*10 - ny*5, oy+cdy - ny*10 + nx*5);
+    ctx.fill();
+    ctx.fillStyle = color; ctx.font = 'bold 10px Space Mono'; ctx.textAlign = 'center';
+    ctx.fillText(label, ox+cdx + nx*16, oy+cdy + ny*16);
+  };
+
+  // Draw force vectors from q1
+  drawVec(q1x, q1y, F12x, F12y, '#38bdf8', 'F₁₂');
+  drawVec(q1x, q1y, F13x, F13y, '#f472b6', 'F₁₃');
+  drawVec(q1x, q1y, Fnetx, Fnety, '#34d399', 'F_net');
+
+  // Dashed line q1→q3
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(q1x, q1y); ctx.lineTo(q3x, q3y); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Draw charges
+  const drawCharge = (x, y, pos, label) => {
+    const g = ctx.createRadialGradient(x, y, 2, x, y, 16);
+    g.addColorStop(0, '#fff');
+    g.addColorStop(0.4, pos ? '#f87171' : '#60a5fa');
+    g.addColorStop(1,   pos ? '#7f1d1d' : '#1e3a5f');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, 16, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 13px DM Sans'; ctx.textAlign = 'center';
+    ctx.fillText(pos ? '+' : '−', x, y+5);
+    ctx.fillStyle = '#94a3b8'; ctx.font = '10px Space Mono';
+    ctx.fillText(label, x, y - 22);
+  };
+  drawCharge(q1x, q1y, true, 'q₁');
+  drawCharge(q2x, q2y, true, 'q₂');
+  drawCharge(q3x, q3y, Q3 > 0, 'q₃');
+
+  // Angle label
+  ctx.strokeStyle = '#f472b6'; ctx.lineWidth = 1; ctx.setLineDash([3,3]);
+  ctx.beginPath(); ctx.arc(q1x, q1y, 28, 0, theta > 0 ? theta : 0.01); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#f472b6'; ctx.font = '10px Space Mono'; ctx.textAlign = 'center';
+  ctx.fillText(`θ=${thetaDeg}°`, q1x + 42*Math.cos(theta/2), q1y + 42*Math.sin(theta/2));
+
+  // Component readout
+  const rx = W * 0.03, ry = H * 0.74;
+  ctx.fillStyle = 'rgba(17,24,39,0.9)';
+  ctx.beginPath(); ctx.roundRect(rx, ry, W*0.94, 72, 8); ctx.fill();
+  ctx.strokeStyle = '#1e2d45'; ctx.lineWidth=1; ctx.stroke();
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#38bdf8'; ctx.font = '10px Space Mono';
+  ctx.fillText(`F₁₂: (${(F12x/scale*1e25).toFixed(2)}x̂ + ${(F12y/scale*1e25).toFixed(2)}ŷ) ×10⁻²⁵N`, rx+10, ry+18);
+  ctx.fillStyle = '#f472b6';
+  ctx.fillText(`F₁₃: (${(F13x/scale*1e25).toFixed(2)}x̂ + ${(F13y/scale*1e25).toFixed(2)}ŷ) ×10⁻²⁵N`, rx+10, ry+34);
+  ctx.fillStyle = '#34d399'; ctx.font = 'bold 10px Space Mono';
+  ctx.fillText(`F_net: (${(Fnetx/scale*1e25).toFixed(2)}x̂ + ${(Fnety/scale*1e25).toFixed(2)}ŷ) ×10⁻²⁵N`, rx+10, ry+52);
+  ctx.fillStyle = '#475569'; ctx.font = '10px Space Mono';
+  ctx.fillText(`|F_net| = ${(Math.sqrt(Fnetx**2+Fnety**2)/scale*1e25).toFixed(3)} ×10⁻²⁵N`, rx+10, ry+66);
+}
+
+// ═══════════════════════════════════════════════════════
+// SCENE 11: DIPOLE FIELD
+// ═══════════════════════════════════════════════════════
+let probe11 = 'axis';
+function setProbe11(m) {
+  probe11 = m;
+  document.getElementById('btn-axis11').classList.toggle('active', m === 'axis');
+  document.getElementById('btn-perp11').classList.toggle('active', m === 'perp');
+  draw11();
+}
+
+function draw11() {
+  const canvas = document.getElementById('c11');
+  const ctx = resize(canvas);
+  if (!ctx) return;
+  const W = canvas.width, H = canvas.height;
+  const s   = +document.getElementById('sep11').value;  // half-sep in px
+  const qnC = +document.getElementById('q11').value;
+  document.getElementById('sep11val').textContent = s + ' px';
+  document.getElementById('q11val').textContent   = qnC + ' nC';
+
+  ctx.fillStyle = '#0d1526'; ctx.fillRect(0, 0, W, H);
+
+  const ke = 8.99e9, q = qnC * 1e-9;
+  const cx = W * 0.42, cy = H * 0.5;
+  // Dipole along x-axis: +q at (cx+s/2, cy), -q at (cx-s/2, cy)
+  const px = cx + s/2, nx = cx - s/2;
+  const pMag = q * s * 0.001; // dipole moment in Cm (s in px→m via 0.001)
+
+  // Draw field lines using the existing traceFieldLine logic
+  const charges = [{x: px, y: cy, q: 1}, {x: nx, y: cy, q: -1}];
+  const traceFieldLine = (x0, y0, steps=280, dt=1.8) => {
+    let x=x0, y=y0;
+    ctx.beginPath(); ctx.moveTo(x, y);
+    for (let i=0; i<steps; i++) {
+      let fx=0, fy=0;
+      for (const c of charges) {
+        const dx=x-c.x, dy=y-c.y, r2=dx*dx+dy*dy;
+        if (r2 < 80) break;
+        const r=Math.sqrt(r2);
+        fx += c.q*dx/(r2*r); fy += c.q*dy/(r2*r);
+      }
+      const fm=Math.sqrt(fx*fx+fy*fy);
+      if (fm < 1e-10) break;
+      x += dt*fx/fm; y += dt*fy/fm;
+      if (x<0||x>W||y<0||y>H) break;
+      ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  };
+
+  ctx.strokeStyle = 'rgba(251,191,36,0.5)'; ctx.lineWidth = 1.2;
+  for (let a=0; a<360; a+=22) {
+    const rad = a*Math.PI/180;
+    traceFieldLine(px + 20*Math.cos(rad), cy + 20*Math.sin(rad));
+  }
+
+  // Dipole moment arrow
+  ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(nx, cy+28); ctx.lineTo(px, cy+28); ctx.stroke();
+  ctx.fillStyle = '#a78bfa';
+  ctx.beginPath(); ctx.moveTo(px, cy+28); ctx.lineTo(px-8, cy+23); ctx.lineTo(px-8, cy+33); ctx.fill();
+  ctx.font = '11px Space Mono'; ctx.textAlign = 'center';
+  ctx.fillText('p⃗', cx, cy+42);
+
+  // Probe dot and readout
+  const probeR_px = Math.min(W*0.32, 160);
+  let probex, probey, probeLabel;
+  if (probe11 === 'axis') {
+    probex = cx + probeR_px; probey = cy;
+    probeLabel = 'on-axis';
+  } else {
+    probex = cx; probey = cy - probeR_px;
+    probeLabel = 'bisector';
+  }
+
+  // Actual E field at probe from superposition of two point charges
+  const calcE = (ex, ey) => {
+    let Efx=0, Efy=0;
+    for (const c of charges) {
+      const dx=ex-c.x, dy=ey-c.y, r2=dx*dx+dy*dy, r=Math.sqrt(r2);
+      const E_mag = ke*q/(r2*(0.001*0.001)); // convert px→m
+      Efx += c.q * E_mag * dx/r;
+      Efy += c.q * E_mag * dy/r;
+    }
+    return {x: Efx, y: Efy, mag: Math.sqrt(Efx*Efx+Efy*Efy)};
+  };
+  const Ep = calcE(probex, probey);
+
+  // Draw probe marker
+  ctx.strokeStyle = '#34d399'; ctx.lineWidth=1.5; ctx.setLineDash([5,4]);
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(probex, probey); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#34d399';
+  ctx.beginPath(); ctx.arc(probex, probey, 5, 0, Math.PI*2); ctx.fill();
+
+  // E vector at probe
+  const evScale = Math.min(50 / (Ep.mag || 1), 60);
+  const evx = Ep.x/Ep.mag*Math.min(evScale*Ep.mag,50), evy = Ep.y/Ep.mag*Math.min(evScale*Ep.mag,50);
+  ctx.strokeStyle = '#fbbf24'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(probex, probey); ctx.lineTo(probex+evx, probey+evy); ctx.stroke();
+  ctx.fillStyle='#fbbf24';
+  const en=Math.sqrt(evx*evx+evy*evy);
+  if (en>4){const unx=evx/en,uny=evy/en;ctx.beginPath();ctx.moveTo(probex+evx,probey+evy);ctx.lineTo(probex+evx-unx*9+uny*4,probey+evy-uny*9-unx*4);ctx.lineTo(probex+evx-unx*9-uny*4,probey+evy-uny*9+unx*4);ctx.fill();}
+
+  // Draw charges
+  const drawCharge = (x, y, pos) => {
+    const g = ctx.createRadialGradient(x, y, 2, x, y, 14);
+    g.addColorStop(0, '#fff'); g.addColorStop(0.4, pos?'#f87171':'#60a5fa'); g.addColorStop(1, pos?'#7f1d1d':'#1e3a5f');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font='bold 13px DM Sans'; ctx.textAlign='center';
+    ctx.fillText(pos?'+':'−', x, y+5);
+  };
+  drawCharge(px, cy, true); drawCharge(nx, cy, false);
+
+  // Info panel
+  const r_m = probeR_px * 0.001;
+  const E_axis_approx = 2*ke*pMag/(r_m*r_m*r_m);
+  const E_perp_approx = ke*pMag/(r_m*r_m*r_m);
+  const rx2 = W*0.03, ry2 = H*0.76;
+  ctx.fillStyle='rgba(17,24,39,0.9)'; ctx.beginPath(); ctx.roundRect(rx2,ry2,W*0.94,70,8); ctx.fill();
+  ctx.strokeStyle='#1e2d45'; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle='#64748b'; ctx.font='10px Space Mono'; ctx.textAlign='left';
+  ctx.fillText(`Probe: ${probeLabel}  |  r = ${(r_m*1e9).toFixed(0)} nm  |  p = qs = ${(pMag*1e30).toFixed(1)} ×10⁻³⁰ Cm`, rx2+10, ry2+16);
+  ctx.fillStyle='#fbbf24'; ctx.font='bold 11px Space Mono';
+  ctx.fillText(`|E| at probe = ${(Ep.mag/1000).toFixed(2)} kN/C`, rx2+10, ry2+34);
+  ctx.fillStyle='#94a3b8'; ctx.font='10px Space Mono';
+  ctx.fillText(`Approx (dipole): axis ≈ ${(E_axis_approx/1000).toFixed(2)} kN/C  |  bisector ≈ ${(E_perp_approx/1000).toFixed(2)} kN/C`, rx2+10, ry2+52);
+  ctx.fillStyle='#475569';
+  ctx.fillText('Note: approx valid only when r ≫ s', rx2+10, ry2+66);
+}
+
+// ═══════════════════════════════════════════════════════
+// SCENE 12: CHARGE IN E-FIELD
+// ═══════════════════════════════════════════════════════
+let particle12 = 'electron';
+let anim12 = null;
+function setParticle12(p) {
+  particle12 = p;
+  document.getElementById('btn-elec12').classList.toggle('active', p === 'electron');
+  document.getElementById('btn-prot12').classList.toggle('active', p === 'proton');
+  if (anim12) { cancelAnimationFrame(anim12); anim12 = null; }
+  draw12();
+}
+function draw12() {
+  const canvas = document.getElementById('c12');
+  const ctx = resize(canvas);
+  if (!ctx) return;
+  const W = canvas.width, H = canvas.height;
+  const E_kN  = +document.getElementById('efield12').value;
+  const v0_M  = +document.getElementById('v012').value;
+  document.getElementById('efield12val').textContent = E_kN;
+  document.getElementById('v012val').textContent     = v0_M;
+
+  const E_field = E_kN * 1000;  // N/C
+  const v0 = v0_M * 1e6;        // m/s
+  const me = 9.11e-31, mp = 1.67e-27, e = 1.6e-19;
+  const m  = particle12 === 'electron' ? me : mp;
+  const q  = particle12 === 'electron' ? -e : e;
+  const a  = q * E_field / m;   // acceleration in field direction (x)
+
+  ctx.fillStyle = '#0d1526'; ctx.fillRect(0, 0, W, H);
+
+  // E-field arrows (pointing right = +x)
+  for (let y = H*0.08; y <= H*0.92; y += H*0.12) {
+    const alpha = 0.2 + E_kN * 0.025;
+    ctx.strokeStyle = `rgba(251,191,36,${Math.min(alpha,0.6)})`; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(20, y); ctx.lineTo(W-20, y); ctx.stroke();
+    ctx.fillStyle = `rgba(251,191,36,${Math.min(alpha+0.1,0.7)})`;
+    ctx.beginPath(); ctx.moveTo(W-20,y); ctx.lineTo(W-30,y-4); ctx.lineTo(W-30,y+4); ctx.fill();
+  }
+  ctx.fillStyle='#fbbf24'; ctx.font='bold 13px Space Mono'; ctx.textAlign='left';
+  ctx.fillText(`E⃗ = ${E_kN} kN/C →`, 24, 22);
+
+  // Compute parabolic trajectory
+  // Particle enters at left-centre with v₀ in x direction, E field is in x direction
+  // So: x(t) = v0*t + 0.5*a*t², y(t) = 0 (no y force in uniform horizontal field)
+  // But for visual interest: E field is VERTICAL (+y direction on canvas = downward in physics)
+  // v0 is horizontal. This gives the classic parabola from the notes.
+  // F = qE vertical, a_y = qE/m. x = v0*t, y = 0.5*a_y*t²
+  const a_y = Math.abs(q) * E_field / m;  // magnitude of vertical acceleration
+  const yDir = particle12 === 'electron' ? -1 : 1;  // electron goes against field (upward if E down)
+
+  // Time to cross canvas: t_cross = W_m / v0 (W_m = canvas width in meters, scaled)
+  const pxPerMeter = 1e9;  // 1 nm = 1 px
+  const W_m = W / pxPerMeter;
+  const t_cross = W_m / v0;
+  const maxDeflect_m = 0.5 * a_y * t_cross * t_cross;
+  const maxDeflect_px = maxDeflect_m * pxPerMeter;
+
+  // Normalise so trajectory fits in canvas
+  const canvasDeflect = H * 0.35;
+  const timeScale = maxDeflect_px > 1 ? canvasDeflect / maxDeflect_px : 1;
+
+  const startX = 30, startY = H * 0.5;
+  const pts = [];
+  const nSteps = 120;
+  for (let i = 0; i <= nSteps; i++) {
+    const frac = i / nSteps;
+    const t = frac * t_cross;
+    const px2 = startX + (W - 60) * frac;
+    const defl_px = 0.5 * a_y * t * t * pxPerMeter * timeScale;
+    const py2 = startY + yDir * defl_px;
+    pts.push({x: px2, y: py2});
+  }
+
+  // Draw trajectory
+  ctx.strokeStyle = particle12 === 'electron' ? '#60a5fa' : '#f87171';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  pts.forEach((p,i) => i===0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+  ctx.stroke();
+
+  // Entry arrow (v0)
+  ctx.strokeStyle = '#34d399'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(startX-35, startY); ctx.lineTo(startX-5, startY); ctx.stroke();
+  ctx.fillStyle='#34d399';
+  ctx.beginPath(); ctx.moveTo(startX-5,startY); ctx.lineTo(startX-15,startY-5); ctx.lineTo(startX-15,startY+5); ctx.fill();
+  ctx.font='10px Space Mono'; ctx.textAlign='left';
+  ctx.fillText(`v₀=${v0_M}×10⁶m/s`, startX-35, startY-8);
+
+  // Particle dot
+  const lastPt = pts[pts.length-1];
+  const pcolor = particle12==='electron' ? '#60a5fa' : '#f87171';
+  ctx.fillStyle = pcolor;
+  ctx.beginPath(); ctx.arc(startX, startY, 7, 0, Math.PI*2); ctx.fill();
+
+  // Info panel
+  const rx2=W*0.03, ry2=H*0.78;
+  ctx.fillStyle='rgba(17,24,39,0.92)'; ctx.beginPath(); ctx.roundRect(rx2,ry2,W*0.94,82,8); ctx.fill();
+  ctx.strokeStyle=pcolor; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle='#64748b'; ctx.font='10px Space Mono'; ctx.textAlign='left';
+  ctx.fillText(`Particle: ${particle12}  |  m = ${particle12==='electron'?'9.11×10⁻³¹':'1.67×10⁻²⁷'} kg  |  q = ${particle12==='electron'?'−e':'+e'}`, rx2+10, ry2+16);
+  ctx.fillStyle=pcolor; ctx.font='bold 11px Space Mono';
+  ctx.fillText(`a = qE/m = ${(Math.abs(a)/1e14).toFixed(2)} ×10¹⁴ m/s²  (${particle12==='electron'?'←':'→'} direction)`, rx2+10, ry2+34);
+  ctx.fillStyle='#94a3b8'; ctx.font='10px Space Mono';
+  const defl_m = maxDeflect_m;
+  ctx.fillText(`Deflection over canvas width: ${(defl_m*1e6).toExponential(2)} μm`, rx2+10, ry2+52);
+  ctx.fillStyle='#475569';
+  ctx.fillText(`F = qE = ${(Math.abs(q*E_field)*1e13).toFixed(2)} ×10⁻¹³ N  |  q/m ratio: ${(Math.abs(q/m)/1e8).toFixed(2)} ×10⁸ C/kg`, rx2+10, ry2+68);
+}
+
 </script>
+
+<!-- ═══════════════════════════════════════════════════════
+     SCENE 9: COULOMB'S LAW
+═══════════════════════════════════════════════════════ -->
+<section class="scene" id="coulombs-law">
+  <div class="scene-header">
+    <h2>Coulomb's Law — F = kq₁q₂/r²</h2>
+    <p>Adjust charges and separation. Watch the force vectors update live. Newton's third law: forces are equal and opposite.</p>
+  </div>
+  <div class="canvas-wrap">
+    <canvas id="c9" height="320"></canvas>
+    <div class="controls">
+      <div class="ctrl-group"><label>q₁ (×10⁻¹⁹ C)</label>
+        <input type="range" id="q1_9" min="-8" max="8" value="2" step="1" oninput="draw9()">
+        <span class="val-display" id="q1_9val">+2</span></div>
+      <div class="ctrl-group"><label>q₂ (×10⁻¹⁹ C)</label>
+        <input type="range" id="q2_9" min="-8" max="8" value="4" step="1" oninput="draw9()">
+        <span class="val-display" id="q2_9val">+4</span></div>
+      <div class="ctrl-group"><label>Separation r (cm)</label>
+        <input type="range" id="r9" min="1" max="10" value="3" step="0.5" oninput="draw9()">
+        <span class="val-display" id="r9val">3 cm</span></div>
+    </div>
+  </div>
+  <div class="info-box">
+    <strong>F = k|q₁q₂|/r²</strong> &nbsp; k = 8.99×10⁹ N·m²/C²<br>
+    Force is along the line joining charges. Like charges repel, unlike attract.<br>
+    <strong>Newton's 3rd law:</strong> F on q₁ from q₂ = −F on q₂ from q₁ always, even when q₁ ≠ q₂.
+  </div>
+  <div class="mistake-box">
+    <div class="label">⚠ COMMON MISTAKE</div>
+    Students forget that force ∝ 1/r² — doubling r reduces force by ×4, not ×2.
+    Also: Coulomb's law only applies to <em>point charges</em> (or objects small compared to their separation).
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     SCENE 10: SUPERPOSITION
+═══════════════════════════════════════════════════════ -->
+<section class="scene" id="superposition">
+  <div class="scene-header">
+    <h2>Superposition of Electrostatic Forces</h2>
+    <p>Multiple charges act independently. The net force on q₁ is the vector sum of all individual forces. Drag the third charge to see components change.</p>
+  </div>
+  <div class="canvas-wrap">
+    <canvas id="c10" height="360"></canvas>
+    <div class="controls">
+      <div class="ctrl-group"><label>q₃ sign</label>
+        <button class="ctrl-btn active" id="btn-pos10" onclick="setQ3Sign(1)">+q₃</button>
+        <button class="ctrl-btn" id="btn-neg10" onclick="setQ3Sign(-1)">−q₃</button>
+      </div>
+      <div class="ctrl-group"><label>q₃ angle θ</label>
+        <input type="range" id="theta10" min="0" max="360" value="0" oninput="draw10()">
+        <span class="val-display" id="theta10val">0°</span></div>
+      <div class="ctrl-group"><label>q₃ distance</label>
+        <input type="range" id="dist10" min="40" max="160" value="90" oninput="draw10()">
+        <span class="val-display" id="dist10val">90</span></div>
+    </div>
+  </div>
+  <div class="info-box">
+    <strong>F⃗₁,net = F⃗₁₂ + F⃗₁₃ + ···</strong><br>
+    Each force is computed independently using Coulomb's law, then added as vectors component by component.<br>
+    When forces are not collinear, decompose into x̂ and ŷ components first.
+  </div>
+  <div class="mistake-box">
+    <div class="label">⚠ COMMON MISTAKE</div>
+    Adding magnitudes directly instead of using vector components.
+    If F₁₂ = 3N along x̂ and F₁₃ = 4N at 60°, the result is NOT 7N.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     SCENE 11: DIPOLE FIELD
+═══════════════════════════════════════════════════════ -->
+<section class="scene" id="dipole-field">
+  <div class="scene-header">
+    <h2>Electric Dipole — Field & Dipole Moment p⃗ = qs</h2>
+    <p>Two equal and opposite charges separated by distance s. Probe the field on-axis vs perpendicular bisector.</p>
+  </div>
+  <div class="canvas-wrap">
+    <canvas id="c11" height="360"></canvas>
+    <div class="controls">
+      <div class="ctrl-group"><label>Separation s</label>
+        <input type="range" id="sep11" min="20" max="120" value="60" oninput="draw11()">
+        <span class="val-display" id="sep11val">60</span></div>
+      <div class="ctrl-group"><label>Charge q (nC)</label>
+        <input type="range" id="q11" min="1" max="10" value="3" oninput="draw11()">
+        <span class="val-display" id="q11val">3 nC</span></div>
+      <button class="ctrl-btn active" id="btn-axis11" onclick="setProbe11('axis')">On-axis probe</button>
+      <button class="ctrl-btn" id="btn-perp11" onclick="setProbe11('perp')">Bisector probe</button>
+    </div>
+  </div>
+  <div class="info-box">
+    <strong>On axis:</strong> E ≈ 2kp/r³ &nbsp;|&nbsp; <strong>Bisector:</strong> E ≈ kp/r³ (opposite to p⃗)<br>
+    Both fall off as 1/r³ — faster than a single charge (1/r²) because the dipole fields partially cancel.<br>
+    <strong>p = qs</strong> — dipole moment points from −q to +q.
+  </div>
+  <div class="mistake-box">
+    <div class="label">⚠ COMMON MISTAKE</div>
+    Applying E = kq/r² to a dipole at large distances. For r ≫ s use the dipole approximation E ∝ 1/r³.
+    Also: on the bisector, E points <em>antiparallel</em> to p⃗, not parallel.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     SCENE 12: CHARGE IN E-FIELD
+═══════════════════════════════════════════════════════ -->
+<section class="scene" id="charge-motion">
+  <div class="scene-header">
+    <h2>Motion of a Charge in a Uniform E-field</h2>
+    <p>F = qE gives constant acceleration. Initial velocity horizontal → parabolic trajectory (like projectile motion). Matches Example 12 from the notes.</p>
+  </div>
+  <div class="canvas-wrap">
+    <canvas id="c12" height="360"></canvas>
+    <div class="controls">
+      <div class="ctrl-group"><label>E field (kN/C)</label>
+        <input type="range" id="efield12" min="1" max="20" value="10" oninput="draw12()">
+        <span class="val-display" id="efield12val">10</span></div>
+      <div class="ctrl-group"><label>v₀ (×10⁶ m/s)</label>
+        <input type="range" id="v012" min="1" max="10" value="4" oninput="draw12()">
+        <span class="val-display" id="v012val">4</span></div>
+      <div class="ctrl-group"><label>Particle</label>
+        <button class="ctrl-btn active" id="btn-elec12" onclick="setParticle12('electron')">Electron</button>
+        <button class="ctrl-btn" id="btn-prot12" onclick="setParticle12('proton')">Proton</button>
+      </div>
+      <button class="ctrl-btn" id="btn-anim12" onclick="animCharge12()">▶ Launch</button>
+    </div>
+  </div>
+  <div class="info-box">
+    <strong>a = qE/m</strong> — acceleration depends on charge-to-mass ratio q/m.<br>
+    Electron: q/m = 1.76×10¹¹ C/kg &nbsp;|&nbsp; Proton: q/m = 9.58×10⁷ C/kg<br>
+    Same E, same initial v₀ — electron deflects far more because q/m is ~1836× larger.
+  </div>
+  <div class="mistake-box">
+    <div class="label">⚠ COMMON MISTAKE</div>
+    Forgetting that a <em>negative</em> charge accelerates <em>opposite</em> to E.
+    The electron moves against the field direction: F = −eE.
+  </div>
+</section>
 </body>
 </html>
